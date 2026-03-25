@@ -1,4 +1,48 @@
-```gitignore
+tignore
+### OS ###
+.DS_Store
+Thumbs.db
+
+### IDE ###
+.vscode/
+.idea/
+*.iml
+
+### Logs ###
+*.log
+logs/
+
+### Env ###
+.env
+.env.*
+!.env.example
+
+### Node ###
+node_modules/
+dist/
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+
+# Variable files
+*.auto.tfvars
+*.auto.tfvars.json
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log```gitignore
 ### OS ###
 .DS_Store
 Thumbs.db
