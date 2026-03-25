@@ -35,3 +35,4 @@ Terraform 기반으로 AWS 인프라를 코드화하고, K3s 클러스터 위에
 - Terraform: 인프라 코드 관리
 
 ## Project Structure
+### 사진 추가 예정
