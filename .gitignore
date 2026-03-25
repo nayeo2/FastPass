@@ -1,0 +1,61 @@
+```gitignore
+### OS ###
+.DS_Store
+Thumbs.db
+
+### IDE ###
+.vscode/
+.idea/
+*.iml
+
+### Logs ###
+*.log
+logs/
+
+### Env ###
+.env
+.env.*
+!.env.example
+
+### Node ###
+node_modules/
+dist/
+build/
+npm-debug.log*
+yarn.lock
+pnpm-lock.yaml
+
+### Java / Spring ###
+target/
+build/
+.gradle/
+*.jar
+*.war
+
+### Python (혹시 사용 시) ###
+__pycache__/
+*.pyc
+
+### Terraform ###
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+
+### Kubernetes ###
+*.secret.yaml
+
+### Docker ###
+*.pid
+*.sock
+
+### AWS ###
+.aws/
+
+### Coverage ###
+coverage/
