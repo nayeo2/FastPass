@@ -36,3 +36,18 @@ Terraform 기반으로 AWS 인프라를 코드화하고, K3s 클러스터 위에
 
 ## Project Structure
 ### 사진 추가 예정
+
+## How to Run (Dev)
+bash
+# terraform
+cd infra/environments/dev
+terraform init
+terraform apply
+
+# backend
+./gradlew bootRun
+
+# frontend
+npm install && npm run dev
+Author
+Nayoung Lee
