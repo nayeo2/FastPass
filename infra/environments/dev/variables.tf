@@ -21,3 +21,13 @@ variable "instance_type" {
   type        = string
   default     = "t3.micro"
 }
+
+variable "key_name" {
+  description = "EC2 key pair name"
+  type        = string
+}
+
+variable "my_ip" {
+  description = "My public IP with /32"
+  type        = string
+}
