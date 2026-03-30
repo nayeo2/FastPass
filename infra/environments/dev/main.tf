@@ -104,6 +104,15 @@ resource "aws_security_group" "ec2_sg" {
     cidr_blocks = [var.my_ip]
   }
 
+  # redis (6379) - var.my_ip 허용
+  ingress {
+    description = "Redis access from my IP"
+    from_port   = 6379
+    to_port     = 6379
+    protocol    = "tcp"
+    cidr_blocks = [var.my_ip]
+  }
+
   # 모든 아웃바운드 허용
   egress {
     description = "All outbound"
