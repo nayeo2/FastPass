@@ -1,4 +1,7 @@
-output "name_prefix" {
-  description = "Common name prefix for resources"
-  value       = local.name_prefix
+output "instance_id" {
+  value = aws_instance.fastpass_server.id
+}
+
+output "public_ip" {
+  value = aws_instance.fastpass_server.public_ip
 }
