@@ -29,7 +29,7 @@ def process_ticket(ticket_id: int):
         ).fetchone()
 
         if row is None:
-            print(f"[WARN] ticket_id={ticket_id} 는 DB에 없음")
+            print(f"[WARN] ticket_id={ticket_id} 는 DB에 없음", flush=True)
             return
 
         current_status = row[1]
@@ -48,7 +48,7 @@ def process_ticket(ticket_id: int):
             """),
             {"ticket_id": ticket_id}
         )
-        print(f"[INFO] ticket_id={ticket_id} → PROCESSING")
+        print(f"[INFO] ticket_id={ticket_id} → PROCESSING", flush=True)
 
     # 실제 처리 시간이 있다고 가정
     time.sleep(2)
@@ -63,7 +63,7 @@ def process_ticket(ticket_id: int):
             """),
             {"ticket_id": ticket_id}
         )
-        print(f"[INFO] ticket_id={ticket_id} → COMPLETED")
+        print(f"[INFO] ticket_id={ticket_id} → COMPLETED", flush=True)
 
 
 def fail_ticket(ticket_id: int):
@@ -82,11 +82,11 @@ def fail_ticket(ticket_id: int):
             )
         print(f"[ERROR] ticket_id={ticket_id} → FAILED")
     except Exception as e:
-        print(f"[FATAL] FAILED 상태 업데이트조차 실패. ticket_id={ticket_id}, error={e}")
+        print(f"[FATAL] FAILED 상태 업데이트조차 실패. ticket_id={ticket_id}, error={e}", flush=True)
 
 
 def main():
-    print("[WORKER] started. waiting for tickets...")
+    print("[WORKER] started. waiting for tickets...", flush=True)
 
     while True:
         try:
@@ -99,24 +99,24 @@ def main():
             _, ticket_id_str = result
             ticket_id = int(ticket_id_str)
 
-            print(f"[WORKER] 받은 ticket_id={ticket_id}")
+            print(f"[WORKER] 받은 ticket_id={ticket_id}", flush=True)
 
             try:
                 process_ticket(ticket_id)
             except Exception as e:
-                print(f"[ERROR] ticket_id={ticket_id} 처리 실패: {e}")
+                print(f"[ERROR] ticket_id={ticket_id} 처리 실패: {e}", flush=True)
                 fail_ticket(ticket_id)
 
         except redis.RedisError as e:
-            print(f"[REDIS ERROR] {e}")
+            print(f"[REDIS ERROR] {e}", flush=True)
             time.sleep(3)
 
         except SQLAlchemyError as e:
-            print(f"[DB ERROR] {e}")
+            print(f"[DB ERROR] {e}", flush=True)
             time.sleep(3)
 
         except Exception as e:
-            print(f"[UNKNOWN ERROR] {e}")
+            print(f"[UNKNOWN ERROR] {e}", flush=True)
             time.sleep(3)
 
 
