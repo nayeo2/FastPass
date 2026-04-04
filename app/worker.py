@@ -48,6 +48,7 @@ def process_ticket(ticket_id: int):
             print(f"[SKIP] ticket_id={ticket_id} status={status}", flush=True)
             return
 
+        # 🔥 Redis 락
         lock_success = try_lock_seat(redis_client, user_id, event_id, seat_id)
 
         if not lock_success:
@@ -59,23 +60,60 @@ def process_ticket(ticket_id: int):
                 """),
                 {"ticket_id": ticket_id}
             )
-            print(f"[LOCK FAIL] ticket_id={ticket_id}, seat={seat_id}", flush=True)
+            print(f"[LOCK FAIL] seat={seat_id}", flush=True)
             return
 
+        # 🔥 DB 좌석 상태 확인
+        seat_row = conn.execute(
+            text("""
+                SELECT status FROM seats
+                WHERE event_id = :event_id AND seat_id = :seat_id
+                FOR UPDATE
+            """),
+            {"event_id": event_id, "seat_id": seat_id}
+        ).fetchone()
+
+        if seat_row is None:
+            print(f"[ERROR] seat 없음", flush=True)
+            return
+
+        if seat_row[0] != "AVAILABLE":
+            conn.execute(
+                text("""
+                    UPDATE ticket_requests
+                    SET status = 'FAILED', updated_at = NOW()
+                    WHERE id = :ticket_id
+                """),
+                {"ticket_id": ticket_id}
+            )
+            print(f"[DB FAIL] 이미 예약된 좌석", flush=True)
+            return
+
+        # 🔥 좌석 RESERVED
         conn.execute(
             text("""
-                UPDATE ticket_requests
-                SET status = 'PROCESSING', updated_at = NOW()
-                WHERE id = :ticket_id
+                UPDATE seats
+                SET status = 'RESERVED', updated_at = NOW()
+                WHERE event_id = :event_id AND seat_id = :seat_id
             """),
-            {"ticket_id": ticket_id}
+            {"event_id": event_id, "seat_id": seat_id}
         )
 
-        print(f"[LOCK SUCCESS] user={user_id}, ticket_id={ticket_id}, seat={seat_id}", flush=True)
+        # 🔥 예약 생성
+        conn.execute(
+            text("""
+                INSERT INTO reservations (ticket_request_id, user_id, event_id, seat_id)
+                VALUES (:ticket_id, :user_id, :event_id, :seat_id)
+            """),
+            {
+                "ticket_id": ticket_id,
+                "user_id": user_id,
+                "event_id": event_id,
+                "seat_id": seat_id
+            }
+        )
 
-    time.sleep(2)
-
-    with engine.begin() as conn:
+        # 상태 변경
         conn.execute(
             text("""
                 UPDATE ticket_requests
@@ -85,9 +123,7 @@ def process_ticket(ticket_id: int):
             {"ticket_id": ticket_id}
         )
 
-        print(f"[DONE] ticket_id={ticket_id}, seat={seat_id}", flush=True)
-
-
+        print(f"[SUCCESS] user={user_id}, seat={seat_id}", flush=True)
 
 def fail_ticket(ticket_id: int):
     """
