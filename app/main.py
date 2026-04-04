@@ -17,6 +17,17 @@ class TicketRequest(BaseModel):
     event_id: int
     seat_id: str
 
+def check_duplicate_request(redis_client, user_id, event_id):
+    key = f"user:{user_id}:event:{event_id}"
+
+    result = redis_client.set(
+        key,
+        "1",
+        nx=True,
+        ex=300  # 5분
+    )
+
+    return result
 
 @app.get("/")
 def root():
@@ -26,6 +37,19 @@ def root():
 @app.post("/tickets/request")
 def request_ticket(request: TicketRequest):
     try:
+        # 🔥 중복 요청 방지
+        duplicate = check_duplicate_request(
+            redis_client,
+            request.user_id,
+            request.event_id
+        )
+
+        if not duplicate:
+            raise HTTPException(
+                status_code=400,
+                detail="이미 해당 이벤트에 대한 요청이 진행 중입니다."
+            )
+            
         with engine.begin() as conn:
             result = conn.execute(
                 text("""

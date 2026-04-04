@@ -45,7 +45,7 @@ def process_ticket(ticket_id: int):
         status = row[4]
 
         if status != "QUEUED":
-            print(f"[INFO] ticket_id={ticket_id} already handled. status={status}", flush=True)
+            print(f"[SKIP] ticket_id={ticket_id} status={status}", flush=True)
             return
 
         lock_success = try_lock_seat(redis_client, user_id, event_id, seat_id)
@@ -71,7 +71,7 @@ def process_ticket(ticket_id: int):
             {"ticket_id": ticket_id}
         )
 
-        print(f"[LOCK SUCCESS] ticket_id={ticket_id}, seat={seat_id}", flush=True)
+        print(f"[LOCK SUCCESS] user={user_id}, ticket_id={ticket_id}, seat={seat_id}", flush=True)
 
     time.sleep(2)
 
