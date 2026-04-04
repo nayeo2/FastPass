@@ -15,6 +15,7 @@ engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 class TicketRequest(BaseModel):
     user_id: int
     event_id: int
+    seat_id: str
 
 
 @app.get("/")
@@ -23,38 +24,38 @@ def root():
 
 
 @app.post("/tickets/request")
-def request_ticket(data: TicketRequest):
+def request_ticket(request: TicketRequest):
     try:
-        # 1. DB 저장
         with engine.begin() as conn:
             result = conn.execute(
                 text("""
-                    INSERT INTO ticket_requests (user_id, event_id, status)
-                    VALUES (:user_id, :event_id, 'QUEUED')
+                    INSERT INTO ticket_requests (user_id, event_id, seat_id, status, created_at, updated_at)
+                    VALUES (:user_id, :event_id, :seat_id, 'QUEUED', NOW(), NOW())
                 """),
-                {"user_id": data.user_id, "event_id": data.event_id}
+                {
+                    "user_id": request.user_id,
+                    "event_id": request.event_id,
+                    "seat_id": request.seat_id
+                }
             )
+
             ticket_id = result.lastrowid
 
-        # 2. Redis queue에 ticket_id push
         redis_client.rpush("ticket_queue", ticket_id)
 
-        # 3. queue 길이 확인
-        queue_length = redis_client.llen("ticket_queue")
-
         return {
-            "message": "request queued",
+            "message": "Ticket request queued successfully",
             "ticket_id": ticket_id,
-            "user_id": data.user_id,
-            "event_id": data.event_id,
             "status": "QUEUED",
-            "queue_length": queue_length
+            "seat_id": request.seat_id
         }
 
     except SQLAlchemyError as e:
-        raise HTTPException(status_code=500, detail=f"DB error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    except redis.RedisError as e:
+        raise HTTPException(status_code=500, detail=f"Redis error: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
 @app.get("/queue")

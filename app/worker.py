@@ -12,16 +12,23 @@ DATABASE_URL = "mysql+pymysql://fastpass:fastpass1234@mysql:3306/fastpass"
 redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
+def try_lock_seat(redis_client, user_id, event_id, seat_id):
+    seat_key = f"seat:{event_id}:{seat_id}"
+
+    result = redis_client.set(
+        seat_key,
+        user_id,
+        nx=True,
+        ex=30
+    )
+
+    return result
 
 def process_ticket(ticket_id: int):
-    """
-    ticket_id를 기반으로 DB 상태를 변경하는 핵심 처리 함수
-    """
     with engine.begin() as conn:
-        # 1) 현재 티켓 상태 조회
         row = conn.execute(
             text("""
-                SELECT id, status
+                SELECT id, user_id, event_id, seat_id, status
                 FROM ticket_requests
                 WHERE id = :ticket_id
             """),
@@ -29,17 +36,32 @@ def process_ticket(ticket_id: int):
         ).fetchone()
 
         if row is None:
-            print(f"[WARN] ticket_id={ticket_id} 는 DB에 없음", flush=True)
+            print(f"[WARN] ticket_id={ticket_id} 없음", flush=True)
             return
 
-        current_status = row[1]
+        user_id = row[1]
+        event_id = row[2]
+        seat_id = row[3]
+        status = row[4]
 
-        # 이미 처리됐거나 비정상 상태면 스킵
-        if current_status != "QUEUED":
-            print(f"[INFO] ticket_id={ticket_id} 는 이미 처리 대상이 아님. current_status={current_status}")
+        if status != "QUEUED":
+            print(f"[INFO] ticket_id={ticket_id} already handled. status={status}", flush=True)
             return
 
-        # 2) PROCESSING으로 변경
+        lock_success = try_lock_seat(redis_client, user_id, event_id, seat_id)
+
+        if not lock_success:
+            conn.execute(
+                text("""
+                    UPDATE ticket_requests
+                    SET status = 'FAILED', updated_at = NOW()
+                    WHERE id = :ticket_id
+                """),
+                {"ticket_id": ticket_id}
+            )
+            print(f"[LOCK FAIL] ticket_id={ticket_id}, seat={seat_id}", flush=True)
+            return
+
         conn.execute(
             text("""
                 UPDATE ticket_requests
@@ -48,13 +70,12 @@ def process_ticket(ticket_id: int):
             """),
             {"ticket_id": ticket_id}
         )
-        print(f"[INFO] ticket_id={ticket_id} → PROCESSING", flush=True)
 
-    # 실제 처리 시간이 있다고 가정
+        print(f"[LOCK SUCCESS] ticket_id={ticket_id}, seat={seat_id}", flush=True)
+
     time.sleep(2)
 
     with engine.begin() as conn:
-        # 3) COMPLETED로 변경
         conn.execute(
             text("""
                 UPDATE ticket_requests
@@ -63,7 +84,9 @@ def process_ticket(ticket_id: int):
             """),
             {"ticket_id": ticket_id}
         )
-        print(f"[INFO] ticket_id={ticket_id} → COMPLETED", flush=True)
+
+        print(f"[DONE] ticket_id={ticket_id}, seat={seat_id}", flush=True)
+
 
 
 def fail_ticket(ticket_id: int):
@@ -80,7 +103,7 @@ def fail_ticket(ticket_id: int):
                 """),
                 {"ticket_id": ticket_id}
             )
-        print(f"[ERROR] ticket_id={ticket_id} → FAILED")
+        print(f"[ERROR] ticket_id={ticket_id} → FAILED", flush=True)
     except Exception as e:
         print(f"[FATAL] FAILED 상태 업데이트조차 실패. ticket_id={ticket_id}, error={e}", flush=True)
 
