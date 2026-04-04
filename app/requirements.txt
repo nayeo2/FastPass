@@ -4,3 +4,4 @@ redis
 pymysql
 sqlalchemy
 cryptography
+pydantic

@@ -113,6 +113,15 @@ resource "aws_security_group" "ec2_sg" {
     cidr_blocks = [var.my_ip]
   }
 
+  # 8000번 포트 열어두기
+  ingress {
+    description = "FastAPI 8000"
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # 모든 아웃바운드 허용
   egress {
     description = "All outbound"
